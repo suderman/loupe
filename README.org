@@ -1,1 +1,114 @@
-* loupe
+#+title: loupe
+
+=loupe= turns Emacs into an image and PDF viewer you can pinch, pan, and swipe, by touch screen, touchpad, mouse, or keys. It was written for the Android port of Emacs, where a pinch on an image otherwise rescales the text of every buffer, and it works the same on a desktop. =loupe-gallery= shows a folder of photos as a grid of square tiles.
+
+* Images
+
+In Image mode, with =loupe-mode= on:
+
+| Gesture or key           | Effect                                                   |
+|--------------------------+----------------------------------------------------------|
+| Pinch, touchpad pinch    | Zoom around the fingers or pointer                       |
+| Control and the wheel    | Zoom around the pointer                                  |
+| Drag, mouse drag, wheel  | Pan a zoomed image; a flick keeps gliding                |
+| Double tap, double click | Zoom in where tapped, or back to fit                     |
+| Sideways swipe at fit    | Slide to the next or previous image                      |
+| Wheel at fit             | Next or previous image, one per notch or touchpad scroll |
+| =+= =-= =0=              | Zoom in, zoom out, reset                                 |
+| Arrows                   | Pan when zoomed, otherwise previous and next image       |
+| =n= =p=                  | Next and previous image, in gallery or directory order   |
+| =r= =R=                  | Rotate clockwise and counterclockwise                    |
+| =G=                      | Open the folder in =loupe-gallery=                       |
+| =q=                      | Back to the gallery, or quit the window                  |
+
+Images open fitted to the window and centred.
+
+Emacs scales an image when it loads it, never while drawing it, so every new zoom level costs a full decode plus a scaling pass. On a phone that is 0.2 to 1 s for a camera photo. While fingers move, =loupe= therefore draws a smaller copy without smoothing, then draws the real image once they lift. ImageMagick (=magick= or =convert=) makes those copies in the background and caches them in =loupe-proxy-directory=. Without ImageMagick, zoom draws from the full image, more slowly. Panning only moves a slice of the drawn image, so it costs nothing, and zoom never holds more than =loupe-max-pixels= in memory.
+
+* PDFs
+
+In DocView and PDF Tools, with =loupe-mode= on:
+
+- Pinch zooms the page roughly while the fingers move and sharply when they lift. A touchpad pinch does the same, settling after a short pause.
+- Control and the wheel zoom around the pointer.
+- One finger scrolls the page and glides after a flick, stopping at the edge of the page. A drag that starts at the top or bottom of the page and goes a quarter of the window past it turns the page.
+- A double tap zooms to twice the width, or back to fit.
+
+DocView pages open fitted to the window's width. DocView passes no =:scale= to its page images, so on a high-density screen it would draw every page several times too large; =loupe= draws them at their real size.
+
+* Gallery
+
+=M-x loupe-gallery= in Dired shows the listed images in the listing's order, starting on the file at point. In an image it shows that image's folder.
+
+- Every photo fills a square tile, cropped to its centre, and tiles fill the window's width.
+- Thumbnails load only as their rows come into view, so a camera folder of thousands of photos opens at once. They share the freedesktop thumbnail cache (256 or 512 pixels) with Image-Dired and desktop file managers.
+- A pinch, Control and the wheel, or =+= and =-= show one column fewer or more. One pinch changes the grid once.
+- A tap or =RET= opens an image; on a desktop, a click selects and a double click opens. In that image, paging and swiping follow the gallery's order, and =q= returns to the gallery.
+- =m= or a long press marks; marked tiles get a thick frame. =U= unmarks all, and =d= deletes the marked images, or the selected one, after confirmation.
+- =s= switches between the listing's order and newest first, =g= rescans, and =q= restores the windows the gallery replaced.
+
+* Install
+
+Requires Emacs 30.1 or newer. With Emacs's built-in VC package manager:
+
+#+begin_src elisp
+(package-vc-install "https://github.com/suderman/loupe")
+#+end_src
+
+Alternatively, clone this repository and add it to =load-path=. Then enable the mode:
+
+#+begin_src elisp
+(require 'loupe)
+(loupe-mode 1)
+#+end_src
+
+With =use-package=:
+
+#+begin_src elisp
+(use-package loupe
+  :vc (:url "https://github.com/suderman/loupe" :rev :newest)
+  :config (loupe-mode 1))
+#+end_src
+
+=loupe-gallery= is autoloaded. Bind it where you browse files, for example in Dired:
+
+#+begin_src elisp
+(keymap-set dired-mode-map "G" #'loupe-gallery)
+#+end_src
+
+On Android, ImageMagick and Ghostscript come from Termux. With Emacs sharing Termux's user ID, add Termux's =bin= directory to =exec-path=.
+
+* Options
+
+- =loupe-max-zoom= (default 8) is the largest zoom relative to an image's fitted size.
+- =loupe-max-pixels= (default 24,000,000) caps the size of a zoomed image, since Emacs holds it whole: about 8 bytes per pixel on Android.
+- =loupe-double-tap-zoom= (default 2.5) is the zoom a double tap or double click jumps to.
+- =loupe-proxy-size= (default 1600) is the longest edge of the rough copy drawn while zooming.
+- =loupe-proxy-min-bytes= (default 1,000,000) is the smallest image file worth a rough copy.
+- =loupe-proxy-limit= (default 300) is the number of rough copies kept.
+- =loupe-proxy-directory= (default =~/.cache/loupe/=, or under =XDG_CACHE_HOME=) holds them.
+- =loupe-document-fit-width= (default t) opens DocView pages fitted to the window's width.
+- =loupe-gallery-tile-width= (default 260) is the approximate tile width; the window decides the number of columns.
+- =loupe-gallery-gap= (default 8) is the space between tiles, in pixels.
+
+=loupe-image-mode-map=, =loupe-document-mode-map=, and =loupe-gallery-mode-map= hold the bindings. Modal editing packages may need their movement commands remapped in =loupe-image-mode-map=, for example =[remap meow-left]= to =loupe-left=. =loupe-gallery-mode-hook= runs in each gallery.
+
+* Compatibility and tests
+
+Emacs has no public interface for zooming Image mode in place. =loupe= draws through a window-specific overlay over Image mode's display property, advises =image-get-display-property= so that Image mode's commands still see their own image, and advises =image-toggle-display-image= and =image-toggle-display-text= to start again at fit when Image mode rebuilds its image. It reads Image mode's per-window properties for DocView and PDF Tools pages, binds raw =touchscreen-begin=, =touchscreen-update=, and =touchscreen-end= events so that =touch-screen.el= leaves them alone, and uses its internal =touch-screen-relative-xy=. Check compatibility when upgrading Emacs. Disabling =loupe-mode= removes the hooks, advice, and overlays.
+
+The Android port of Emacs does not notice a child process exiting, and starting one takes about a third of a second. =loupe= therefore runs ImageMagick through one long-lived shell and watches for the files it writes, rather than waiting on process sentinels.
+
+PDF Tools' continuous scrolling mode (=pdf-view-roll-minor-mode=) is not supported.
+
+Run the standalone ERT suite from this repository:
+
+#+begin_src sh
+emacs --batch -L . -l test/loupe-test.el -f ert-run-tests-batch-and-exit
+#+end_src
+
+The tests need no display, touch screen, or personal configuration.
+
+* License
+
+GPL-3.0-or-later. See [[file:LICENSE][LICENSE]].
