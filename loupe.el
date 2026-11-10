@@ -93,6 +93,10 @@ Emacs keeps a zoomed image whole, about 8 bytes per pixel on Android."
   "Directory for the proxies drawn while zooming."
   :type 'directory)
 
+(defcustom loupe-animate t
+  "Non-nil to play animated images, such as GIFs, as soon as they show."
+  :type 'boolean)
+
 (defcustom loupe-document-fit-width t
   "Non-nil to open DocView pages fitted to the window's width."
   :type 'boolean)
@@ -127,6 +131,9 @@ A gallery sets it so that paging follows the gallery.")
 
 (defvar-local loupe-quit-function nil
   "Function that leaves this image, or nil for `quit-window'.")
+
+(defvar-local loupe--animated nil
+  "Image spec whose animation loupe started in this buffer.")
 
 ;;;; Drawing
 
@@ -306,6 +313,27 @@ Return to fit if the gesture shrank it below that."
           loupe--origin nil))
   (loupe-redraw window))
 
+(defun loupe--stop-animation ()
+  "Stop the animation loupe started in this buffer."
+  (when-let* ((image loupe--animated)
+              (timer (image-animate-timer image)))
+    (cancel-timer timer))
+  (setq loupe--animated nil))
+
+(defun loupe--animate ()
+  "Play this buffer's image if it is animated, stopping any it replaced.
+Image mode builds a new image when it refits or rotates, and the old one's
+timer would otherwise keep animating it unseen while the new one stands
+still."
+  (let ((base (loupe--base)))
+    (unless (and base (eq base loupe--animated))
+      (loupe--stop-animation)
+      (when (and loupe-animate base
+                 (ignore-errors (image-multi-frame-p base)))
+        (unless (image-animate-timer base)
+          (image-animate base nil t))
+        (setq loupe--animated base)))))
+
 (defun loupe--reset (&rest _)
   "Show the image fitted and centred again."
   (when loupe-image-mode
@@ -313,6 +341,7 @@ Return to fit if the gesture shrank it below that."
           loupe--origin nil
           loupe--shift 0)
     (loupe--forget)
+    (loupe--animate)
     (loupe-redraw)))
 
 (defun loupe--refresh (window)
@@ -322,7 +351,8 @@ Return to fit if the gesture shrank it below that."
       (loupe-redraw window))))
 
 (defun loupe--cleanup ()
-  "Remove the zoom overlay and drop the zoomed image."
+  "Remove the zoom overlay, drop the zoomed image, and stop animating."
+  (loupe--stop-animation)
   (loupe--forget)
   (when (overlayp loupe--overlay)
     (delete-overlay loupe--overlay))
@@ -923,6 +953,7 @@ VELOCITY is the finger's sideways speed when it lifted."
         (add-hook 'kill-buffer-hook #'loupe--cleanup nil t)
         (when (and buffer-file-name (display-graphic-p))
           (loupe--proxy buffer-file-name))
+        (loupe--animate)
         (loupe-redraw))
     (remove-hook 'window-buffer-change-functions #'loupe--refresh t)
     (remove-hook 'window-size-change-functions #'loupe--refresh t)

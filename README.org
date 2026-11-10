@@ -21,7 +21,7 @@ In Image mode, with =loupe-mode= on:
 | =G=                      | Open the folder in =loupe-gallery=                       |
 | =q=                      | Back to the gallery, or quit the window                  |
 
-Images open fitted to the window and centred.
+Images open fitted to the window and centred, and animated images such as GIFs play and loop. Image mode builds a new image whenever it refits or rotates one; =loupe= plays the new one and stops the old one, which would otherwise go on animating unseen.
 
 Emacs scales an image when it loads it, never while drawing it, so every new zoom level costs a full decode plus a scaling pass. On a phone that is 0.2 to 1 s for a camera photo. While fingers move, =loupe= therefore draws a smaller copy without smoothing, then draws the real image once they lift. ImageMagick (=magick= or =convert=) makes those copies in the background and caches them in =loupe-proxy-directory=. Without ImageMagick, zoom draws from the full image, more slowly. Panning only moves a slice of the drawn image, so it costs nothing, and zoom never holds more than =loupe-max-pixels= in memory.
 
@@ -87,6 +87,7 @@ On Android, ImageMagick and Ghostscript come from Termux. With Emacs sharing Ter
 - =loupe-proxy-min-bytes= (default 1,000,000) is the smallest image file worth a rough copy.
 - =loupe-proxy-limit= (default 300) is the number of rough copies kept.
 - =loupe-proxy-directory= (default =~/.cache/loupe/=, or under =XDG_CACHE_HOME=) holds them.
+- =loupe-animate= (default t) plays animated images as soon as they show.
 - =loupe-document-fit-width= (default t) opens DocView pages fitted to the window's width.
 - =loupe-gallery-tile-width= (default 260) is the approximate tile width; the window decides the number of columns.
 - =loupe-gallery-gap= (default 8) is the space between tiles, in pixels.
