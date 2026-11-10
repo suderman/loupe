@@ -412,8 +412,8 @@ Camera photos often keep their rotation in Exif only, so apply it too."
           (overlay-put overlay 'loupe-gallery-mark t)
           (overlay-put overlay 'face `(:box (:line-width (-10 . -10) :color ,color))))))))
 
-(defun loupe-gallery--current-file ()
-  "Return the selected image file."
+(defun loupe-gallery-selected-file ()
+  "Return the image file selected in the current gallery, or nil."
   (when-let* ((index (loupe-gallery--index)))
     (aref loupe-gallery--files index)))
 
@@ -421,7 +421,7 @@ Camera photos often keep their rotation in Exif only, so apply it too."
   "Return the marked files, or the selected one."
   (or (seq-filter (lambda (file) (gethash file loupe-gallery--marks))
                   loupe-gallery--files)
-      (when-let* ((file (loupe-gallery--current-file)))
+      (when-let* ((file (loupe-gallery-selected-file)))
         (list file))))
 
 ;;;; Commands
@@ -470,7 +470,7 @@ those in its DIRECTORY.  Start on the image at point or the one shown."
   (interactive)
   (let ((gallery (current-buffer))
         (configuration loupe-gallery--return)
-        (file (loupe-gallery--current-file)))
+        (file (loupe-gallery-selected-file)))
     (if configuration
         (set-window-configuration configuration)
       (quit-window))
@@ -591,7 +591,7 @@ Close the image it replaces if the gallery opened that one."
 (defun loupe-gallery-toggle-mark (&optional stay)
   "Mark or unmark the selected image, then select the next unless STAY."
   (interactive)
-  (when-let* ((file (loupe-gallery--current-file)))
+  (when-let* ((file (loupe-gallery-selected-file)))
     (if (gethash file loupe-gallery--marks)
         (remhash file loupe-gallery--marks)
       (puthash file t loupe-gallery--marks))
@@ -627,7 +627,7 @@ Close the image it replaces if the gallery opened that one."
 (defun loupe-gallery-toggle-order ()
   "Switch between listing order and newest first."
   (interactive)
-  (let ((file (loupe-gallery--current-file)))
+  (let ((file (loupe-gallery-selected-file)))
     (setq loupe-gallery--newest-first (not loupe-gallery--newest-first))
     (setq loupe-gallery--files
           (vconcat (loupe-gallery--order (funcall loupe-gallery--scan))))

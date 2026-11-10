@@ -92,7 +92,7 @@ On Android, ImageMagick and Ghostscript come from Termux. With Emacs sharing Ter
 - =loupe-gallery-tile-width= (default 260) is the approximate tile width; the window decides the number of columns.
 - =loupe-gallery-gap= (default 8) is the space between tiles, in pixels.
 
-=loupe-image-mode-map=, =loupe-document-mode-map=, and =loupe-gallery-mode-map= hold the bindings. Modal editing packages may need their movement commands remapped in =loupe-image-mode-map=, for example =[remap meow-left]= to =loupe-left=. =loupe-gallery-mode-hook= runs in each gallery.
+=loupe-image-mode-map=, =loupe-document-mode-map=, and =loupe-gallery-mode-map= hold the bindings. Modal editing packages may need their movement commands remapped in =loupe-image-mode-map=, for example =[remap meow-left]= to =loupe-left=. =loupe-gallery-mode-hook= runs in each gallery, and =loupe-gallery-selected-file= returns the selected image for commands of your own.
 
 * Compatibility and tests
 
